@@ -35,3 +35,7 @@ This system has 64K of RAM and 32K of ROM. However, the Z80 can only ever addres
 | 0x20    | 8-bit Latch   | W   | LED Output              |
 | 0x30-37 | Compact Flash | R/W | Compact Flash Registers |
 | 0x70    | Flip-flop     | W   | RAM/ROM Page            |
+
+## Schematics ##
+
+![Screenshot](images/simple_Z80_schematic.png)
