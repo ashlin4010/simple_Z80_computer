@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Z80")(type "KiCad")(uri "${KIPRJMOD}/../share/footprints/Z80.pretty")(options "")(descr ""))
+)
