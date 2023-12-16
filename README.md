@@ -4,10 +4,10 @@ The goal of this project was to build a minimally complex Z80 computer capable o
 Truthfully this is the second iteration and adds two useful additions, built in USB to serial converter and a Raspberry Pi zero emulating a terminal.
 
 
-![Screenshot](images\simple_Z80_system.jpg)
+![Screenshot](images/simple_Z80_system.jpg)
 
 ## Specifications ##
-* 64K RAM
+* 64K Static RAM
 * 32K ROM
 * Z80 @ 4Mhz
 * USB Keyboard via Raspberry Pi Zero
