@@ -39,3 +39,4 @@ This system has 64K of RAM and 32K of ROM. However, the Z80 can only ever addres
 ## Schematics ##
 
 ![Screenshot](images/simple_Z80_schematic.png)
+[PDF File](design_files/main_board/simple_Z80.pdf)
