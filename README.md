@@ -3,6 +3,8 @@ The goal of this project was to build a minimally complex Z80 computer capable o
 
 Truthfully this is the second iteration and adds two useful additions, built in USB to serial converter and a Raspberry Pi zero emulating a terminal.
 
+### Software Compiler ###
+My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
 
 ![Screenshot](images/simple_Z80_system.jpg)
 
