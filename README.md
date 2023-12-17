@@ -1,7 +1,9 @@
 # Simple Z80 Computer
 The goal of this project was to build a minimally complex Z80 computer capable of running CP/M. While I haven not yet ported CP/M, it should be capable of it.
 
-This system is made of to boards, the upper board has the the CPU, RAM, ROM and UART. The lower board has, Composite Video, USB Keyboard, USB to serial converter, Compact Flash and 8 indicator LEDs.
+This system is made of two boards, the upper board has the the CPU, RAM, ROM and UART. The lower board has Composite Video, USB Keyboard, USB to serial converter, Compact Flash and 8 indicator LEDs.
+
+If you want to have a better understanding of how this system works you checkout the schematics or my [blog](https://blog.tephra.me/z80_sbc/).
 
 ![Screenshot](images/simple_Z80_system.jpg)
 
@@ -13,13 +15,19 @@ This system is made of to boards, the upper board has the the CPU, RAM, ROM and 
 * USB Keyboard via Raspberry Pi Zero
 * Composite Video via Raspberry Pi Zero
 * HDMI Video via Raspberry Pi Zero
-* Suport for 27256 or AT28C256 ROM
+* Support for 27256 or AT28C256 ROM
 * Compact Flash
 * 8 LED indicators
 * Built in USB to serial converter @ 9600 baud
 
 ## Raspberry Pi Zero ##
 As part of the project I wanted to have a composite video output however there was not sufficient space to have a native composite video interface. As an alternative I have used a Raspberry Pi Zero running [pigfx](https://github.com/fbergama/pigfx) which acts as a terminal emulator providing a USB keyboard input and composite video output.
+
+### Raspberry Pi Installation ###
+To the under side of the PCB solder in the Raspberry Pi using the pins from a 2.54mm header so that the Pi is flat against the PCB. Only the circles and yellow need to be soldered. Back on the top side of the PCB you will see some pads the need to be connected to some test points on the Pi, connect them using some wire off cuts.
+
+![Screenshot](images/raspberry_pi_solder_points.png)
+
 
 ## Software Compiler ##
 My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
