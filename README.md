@@ -52,8 +52,10 @@ This system has 64K of RAM and 32K of ROM. However, the Z80 can only ever addres
 
 ## Schematics ##
 
+### Z80 Main Board Schematics - [PDF](design_files/main_board/simple_Z80.pdf) ###
 ![Screenshot](images/simple_Z80_schematic.png)
-[simple_Z80.pdf](design_files/main_board/simple_Z80.pdf)
+
+### Compact Flash & Raspberry Pi Board - [PDF](design_files/CompactFlash/CompactFlash.pdf) ###
 
 ![Screenshot](images/compact_flash_schematic.png)
-[CompactFlash.pdf](design_files/CompactFlash/CompactFlash.pdf)
+
