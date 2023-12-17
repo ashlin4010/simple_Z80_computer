@@ -1,12 +1,10 @@
 # Simple Z80 Computer
-The goal of this project was to build a minimally complex Z80 computer capable of running CP/M. While I have  not yet ported CP/M it should be capable of it.
+The goal of this project was to build a minimally complex Z80 computer capable of running CP/M. While I haven not yet ported CP/M, it should be capable of it.
 
-Truthfully this is the second iteration and adds two useful additions, built in USB to serial converter and a Raspberry Pi zero emulating a terminal.
-
-### Software Compiler ###
-My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
+This system is made of to boards, the upper board has the the CPU, RAM, ROM and UART. The lower board has, Composite Video, USB Keyboard, USB to serial converter, Compact Flash and 8 indicator LEDs.
 
 ![Screenshot](images/simple_Z80_system.jpg)
+
 
 ## Specifications ##
 * 64K Static RAM
@@ -19,6 +17,12 @@ My assembler of choice for this project has been the [Retro Assembler](https://e
 * Compact Flash
 * 8 LED indicators
 * Built in USB to serial converter @ 9600 baud
+
+## Raspberry Pi Zero ##
+As part of the project I wanted to have a composite video output however there was not sufficient space to have a native composite video interface. As an alternative I have used a Raspberry Pi Zero running [pigfx](https://github.com/fbergama/pigfx) which acts as a terminal emulator providing a USB keyboard input and composite video output.
+
+## Software Compiler ##
+My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
 
 ## Memory Address Space ##
 
@@ -41,4 +45,7 @@ This system has 64K of RAM and 32K of ROM. However, the Z80 can only ever addres
 ## Schematics ##
 
 ![Screenshot](images/simple_Z80_schematic.png)
-[PDF File](design_files/main_board/simple_Z80.pdf)
+[simple_Z80.pdf](design_files/main_board/simple_Z80.pdf)
+
+![Screenshot](images/compact_flash_schematic.png)
+[CompactFlash.pdf](design_files/CompactFlash/CompactFlash.pdf)
