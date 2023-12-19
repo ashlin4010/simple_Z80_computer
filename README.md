@@ -20,7 +20,7 @@ If you want to have a better understanding of how this system works you checkout
 * 8 LED indicators
 * Built in USB to serial converter @ 9600 baud
 
-## Raspberry Pi Zero ##
+## Raspberry Pi Zero (Optional) ##
 As part of the project I wanted to have a composite video output however there was not sufficient space to have a native composite video interface. As an alternative I have used a Raspberry Pi Zero running [pigfx](https://github.com/fbergama/pigfx) which acts as a terminal emulator providing a USB keyboard input and composite video output.
 
 ### Raspberry Pi Installation ###
@@ -28,6 +28,11 @@ To the under side of the PCB solder in the Raspberry Pi using the pins from a 2.
 
 ![Screenshot](images/raspberry_pi_solder_points.png)
 
+## ROM Jumper Configuration ##
+
+This system supports the W27C257, 27256 and AT28C256 ROM chips. The W27C257, 27256 are read only and need to have to jumpers set in the top most position. The AT28C256 is read/write and need two jumpers in the lower position.
+
+![Screenshot](images/rom_jumper_setting.jpg)
 
 ## Software Compiler ##
 My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
