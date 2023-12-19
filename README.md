@@ -18,19 +18,19 @@ If you want to have a better understanding of how this system works you checkout
 * Support for 27256 or AT28C256 ROM
 * Compact Flash
 * 8 LED indicators
-* Built in USB to serial converter @ 9600 baud
+* Built-in USB to serial converter @ 9600 baud
 
 ## Raspberry Pi Zero (Optional) ##
-As part of the project I wanted to have a composite video output however there was not sufficient space to have a native composite video interface. As an alternative I have used a Raspberry Pi Zero running [pigfx](https://github.com/fbergama/pigfx) which acts as a terminal emulator providing a USB keyboard input and composite video output.
+As part of the project I wanted to have a composite video output however, there was not sufficient space to have a native composite video interface. As an alternative I have used a Raspberry Pi Zero running [pigfx](https://github.com/fbergama/pigfx) which acts as a terminal emulator providing a USB keyboard input and composite video output.
 
 ### Raspberry Pi Installation ###
-To the under side of the PCB solder in the Raspberry Pi using the pins from a 2.54mm header so that the Pi is flat against the PCB. Only the circles and yellow need to be soldered. Back on the top side of the PCB you will see some pads the need to be connected to some test points on the Pi, connect them using some wire off cuts.
+To the underside of the PCB solder in the Raspberry Pi using the pins from a 2.54mm header so that the Pi is flat against the PCB. Only the circles and yellow need to be soldered. Back on the top side of the PCB you will see some pads that need to be connected to some test points on the Pi, connect them using some wire cuts offs.
 
 ![Screenshot](images/raspberry_pi_solder_points.png)
 
 ## ROM Jumper Configuration ##
 
-This system supports the W27C257, 27256 and AT28C256 ROM chips. The W27C257, 27256 are read only and need to have to jumpers set in the top most position. The AT28C256 is read/write and need two jumpers in the lower position.
+This system supports the W27C257, 27256, and AT28C256 ROM chips. The W27C257, and 27256 are read-only and need to have jumpers set in the topmost position. The AT28C256 is read/write and needs two jumpers in the lower position.
 
 ![Screenshot](images/rom_jumper_setting.jpg)
 
@@ -71,7 +71,9 @@ This system has 64K of RAM and 32K of ROM. However, the Z80 can only ever addres
 | Id | Designator                                              | Footprint                                                          | Quantity | Designation         | Supplier and ref |   |   |
 |----|---------------------------------------------------------|--------------------------------------------------------------------|----------|---------------------|------------------|---|---|
 | 1  | J2                                                      | PinHeader_1x04_P2.54mm_Vertical                                    | 1        | Conn_01x04_Male     |                  |   |   |
-| 2  | C3,C2,C4,C5,C17,C12,C14,C6,C7,C16,C9,C13,C8,C10,C11,C15 | C_Disc_D3.0mm_W1.6mm_P2.50mm                                       | 16       | 0.1uf               |https://www.digikey.co.nz/en/products/detail/kemet/C320C104K5R5TA7303/3726160                  |   |   |
+| 2  | C3,C2,C4,C5,C17
+,C12,C14,C6,C7,C16
+,C9,C13,C8,C10,C11,C15 | C_Disc_D3.0mm_W1.6mm_P2.50mm                                       | 16       | 0.1uf               |https://www.digikey.co.nz/en/products/detail/kemet/C320C104K5R5TA7303/3726160                  |   |   |
 | 3  | R2,R1,R3,R4                                             | R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal                   | 4        | 2k7                 |                  |   |   |
 | 4  | R5                                                      | R_Axial_DIN0204_L3.6mm_D1.6mm_P7.62mm_Horizontal                   | 1        | 1k                  |                  |   |   |
 | 5  | C1                                                      | C_Disc_D3.0mm_W1.6mm_P2.50mm                                       | 1        | 150pF               |https://www.digikey.co.nz/en/products/detail/vishay-beyschlag-draloric-bc-components/K151J15C0GF5TL2/286469                  |   |   |
