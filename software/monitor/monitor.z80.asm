@@ -10,14 +10,16 @@
 .storage $FF $00                        ;Offset
 JP INITIALISE                           ;Start
 
+.include "libs/uart.z80.asm"
+.include "libs/stack.z80.asm"
 
-;***************************************************************************
+;*************************************************************************** 
 ;                           Constantes
 ;***************************************************************************
-STACK_POINTER       .EQU    $FFFF
+BOOT_FLAG           .EQU    $FFFF
+STACK_POINTER       .EQU    $FFFD
 INTRO_TEXT          .asciiz "\r\nMonitor, 2023.11.13\r\n"
 NEW_LINE            .asciiz "\r\n"
-EOS:                .EQU    $00         ;End of string
 MEMORY_START        .EQU    $8000       ;32k+
 
 RETURN_CHAR         .EQU    $0D
@@ -25,26 +27,29 @@ SPACE_CHAR          .EQU    $20
 BACKSPACE_CHAR      .EQU    $08
 DEL_CHAR            .EQU    $7F
 
-UART_B_STATUS_REG   .EQU    $13
-UART_B_DATA_REG     .EQU    $12
-
-UART_A_STATUS_REG   .EQU    $11
-UART_A_DATA_REG     .EQU    $10
-
 OUTPUT_BUFFER_REG   .EQU    $20
 
+UART_AUTO_BOOT      .EQU    true
+
+;UART_B = Raspberry Pi, UART_A = USB UART
+UART_CONSOLE                .EQU    UART_B
 
 ;***************************************************************************
 ;                               Main
 ;***************************************************************************
 INITIALISE:
-    UART_INIT()                         ;Setup UART
-    CLEAR_LEDS()                        ;Turn off leds
-
     LD SP, STACK_POINTER                ;Set stack pointer
+
+    WAIT_PI_BOOT()
+    CLEAR_LEDS()                        ;Turn off leds
+    UART_INIT()                         ;Setup UART
+
     LD HL, INTRO_TEXT			        ;Print intro text
     CALL PRINT_STRING
-    
+
+    .if UART_AUTO_BOOT
+        JP SBOOT
+    .endif
 
 MAIN_LOOP:
     LD B, ">"
@@ -80,6 +85,65 @@ MAIN_LOOP:
     CALL PRINT_STRING
 
     JP MAIN_LOOP
+
+;***************************************************************************
+;DEALY
+;Function: Wait some amount of time
+;***************************************************************************
+DEALY:
+    SAVE_REGISTERS()
+        LD DE, 0xFFFF
+    DELAY:
+        DEC DE
+        LD A, D
+        OR E
+        JR NZ, DELAY
+    RESTORE_REGISTERS()
+RET
+
+;***************************************************************************
+;WAIT_PI_BOOT
+;macro: At the end of memory set AA. If on resert we can read AA 
+;then power has not be interrupted and we don't neeed to wait for the PI to boot
+;***************************************************************************
+.macro WAIT_PI_BOOT()
+    LD A, (BOOT_FLAG)
+    XOR $AA
+    JR NZ, @WAIT
+
+    JP @BOOT
+
+    @WAIT:
+        LD A, %11111111
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11111110
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11111100
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11111000
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11110000
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11100000
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %11000000
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %10000000
+        OUT (OUTPUT_BUFFER_REG), A
+        CALL DEALY
+        LD A, %00000000
+        OUT (OUTPUT_BUFFER_REG), A
+    @BOOT:
+        LD A, $AA
+        LD (BOOT_FLAG), A
+.endmacro
 
 
 ;***************************************************************************
@@ -218,21 +282,10 @@ STRIP_STRINGS:
 
 ;***************************************************************************
 ;SEND_CHAR_UART
-;Function: Send char in B over UART
-;Args: B - char to send
+;Function: Send a byte out of the UART
 ;***************************************************************************
 SEND_CHAR_UART:
-    SAVE_REGISTERS()
-@poll
-    IN A, (UART_B_STATUS_REG)           ;Read serial status reg
-    LD D, A
-    LD A, %00000100                     ;While bit 2 is not 1 check again
-    AND D
-    JR Z, @poll
-    LD A, B                             ;Write Data  
-    OUT (UART_B_DATA_REG), A
-    RESTORE_REGISTERS()
-    RET
+    SEND_BYTE_UART(UART_CONSOLE)
 
 
 ;***************************************************************************
@@ -240,16 +293,7 @@ SEND_CHAR_UART:
 ;Function: Read char from UART into A
 ;***************************************************************************
 READ_CHAR_UART:
-    SAVE_REGISTERS()
-@poll
-    IN A, (UART_B_STATUS_REG)           ;Read serial status reg
-    LD D, A
-    LD A, %00000001                     ;While bit 0 is not 1 check again
-    AND D
-    JR Z, @poll
-    RESTORE_REGISTERS()
-    IN A, (UART_B_DATA_REG)             ;Read Data
-    RET
+    READ_BYTE_UART(UART_CONSOLE)
 
 
 ;***************************************************************************
@@ -258,23 +302,7 @@ READ_CHAR_UART:
 ;Args: hl - start of string in RAM
 ;***************************************************************************
 PRINT_STRING:
-    SAVE_REGISTERS()
-    LD A, (HL)                          ;Read the first char
-    OR EOS
-    JR NZ, @PRINT                       ;If EOS exit
-    RESTORE_REGISTERS()
-    RET
- @PRINT:
-    LD B, (HL)                          ;Send char
-    CALL SEND_CHAR_UART
-    INC HL                              ;Get next char
-    LD B, (HL)
-    LD A, EOS                           ;If next char is not EOS jump start
-    OR B 
-    JR NZ, @PRINT
-    RESTORE_REGISTERS()
-    RET
-
+    PRINT_STRING(SEND_CHAR_UART)
 
 ;***************************************************************************
 ;READ_LINE
@@ -388,146 +416,6 @@ READ_LINE:
     POP HL
 .endmacro
 
-
-;***************************************************************************
-;SAVE_REGISTERS
-;***************************************************************************
-.macro SAVE_REGISTERS()
-    PUSH AF      ; Push register AF onto the stack
-    PUSH BC      ; Push register BC onto the stack
-    PUSH DE      ; Push register DE onto the stack
-    PUSH HL      ; Push register HL onto the stack
-.endmacro
-
-
-;***************************************************************************
-;RESTORE_REGISTERS
-;***************************************************************************
-.macro RESTORE_REGISTERS()
-    POP HL       ; Pop the value from the stack into register HL
-    POP DE       ; Pop the value from the stack into register DE
-    POP BC       ; Pop the value from the stack into register BC
-    POP AF       ; Pop the value from the stack into register AF
-.endmacro
-
-
-;***************************************************************************
-;UART_INIT
-;Macro: Initialise UART
-;***************************************************************************
-.macro UART_INIT()
-
-    LD A, %00110000                     ;Error Reset A
-    OUT (UART_A_STATUS_REG), A
-
-    LD A, %00011000                     ;Reset A
-    OUT (UART_A_STATUS_REG), A
-
-    LD A, %00000100                     ;Select reg 4
-    OUT (UART_A_STATUS_REG), A
-    LD A, %01000100                     ;Clock mode x16 (01)
-    OUT (UART_A_STATUS_REG), A          ;8 BIT SYNC CHARACTER (00)
-                                        ;1 STOP BIT (01)
-                                        ;PARITY EVEN/ODD (0)
-                                        ;PARITY ENABLE (0)
-
-    LD A, %00000001                     ;Select reg 1
-    OUT (UART_A_STATUS_REG), A
-    LD A, %00000000                     ;Wait/Ready Enable (000)
-    OUT (UART_A_STATUS_REG), A          ;Receive Interrupt Mode 1 (0)
-                                        ;Receive Interrupt Mode 0 (0)
-                                        ;Status Affects Vector (0)
-                                        ;Transmit Interrupt Enable (0)
-                                        ;External Interrupts Enable (0)
-    
-    LD A, %00000011                     ;Select reg 3
-    OUT (UART_A_STATUS_REG), A
-    LD A, %11100001                     ;RX 8 BITS/CHARACTER 8 (11)
-    OUT (UART_A_STATUS_REG), A          ;AUTO ENABLES (1)
-                                        ;ENTER HUNT PHASE (0)
-                                        ;RX CRC ENABLE (0)
-                                        ;ADDRESS SEARCH MODE (SDLC) (0)
-                                        ;SYNC CHARACTER LOAD INHIBIT (0)
-                                        ;RX ENABLE (0)
-    
-    LD A, %00000101                     ;Select reg 5
-    OUT (UART_A_STATUS_REG), A
-    LD A, %01101000                     ;Data Terminal Ready HIGH (0)
-    OUT (UART_A_STATUS_REG), A          ;8 Transmit Bits/Characters (11)
-                                        ;Send Break (0)
-                                        ;Transmit Enable (1)
-                                        ;CRC-16 (0)
-                                        ;Request To Send (0)
-                                        ;Transmit CRC Enable (0)
-
-
-    LD A, %00110000                     ;Error Reset B
-    OUT (UART_B_STATUS_REG), A
-
-    LD A, %00011000                     ;Reset B
-    OUT (UART_B_STATUS_REG), A
-
-
-    ;; Setup B
-    LD A, %00000100                     ;Select reg 4
-    OUT (UART_B_STATUS_REG), A
-    LD A, %01000100                     ;Clock mode x16 (01)
-    OUT (UART_B_STATUS_REG), A          ;8 BIT SYNC CHARACTER (00)
-                                        ;1 STOP BIT (01)
-                                        ;PARITY EVEN/ODD (0)
-                                        ;PARITY ENABLE (0)
-
-    LD A, %00000001                     ;Select reg 1
-    OUT (UART_B_STATUS_REG), A
-    LD A, %00000000                     ;Wait/Ready Enable (000)
-    OUT (UART_B_STATUS_REG), A          ;Receive Interrupt Mode 1 (0)
-                                        ;Receive Interrupt Mode 0 (0)
-                                        ;Status Affects Vector (0)
-                                        ;Transmit Interrupt Enable (0)
-                                        ;External Interrupts Enable (0)
-    
-    LD A, %00000011                     ;Select reg 3
-    OUT (UART_B_STATUS_REG), A
-    LD A, %11100001                     ;RX 8 BITS/CHARACTER 8 (11)
-    OUT (UART_B_STATUS_REG), A          ;AUTO ENABLES (1)
-                                        ;ENTER HUNT PHASE (0)
-                                        ;RX CRC ENABLE (0)
-                                        ;ADDRESS SEARCH MODE (SDLC) (0)
-                                        ;SYNC CHARACTER LOAD INHIBIT (0)
-                                        ;RX ENABLE (0)
-    
-    LD A, %00000101                     ;Select reg 5
-    OUT (UART_B_STATUS_REG), A
-    LD A, %01101000                     ;Data Terminal Ready HIGH (0)
-    OUT (UART_B_STATUS_REG), A          ;8 Transmit Bits/Characters (11)
-                                        ;Send Break (0)
-                                        ;Transmit Enable (1)
-                                        ;CRC-16 (0)
-                                        ;Request To Send (0)
-                                        ;Transmit CRC Enable (0)
-
-    LD A, %00110000                     ;Error Reset B
-    OUT (UART_B_STATUS_REG), A
-
-    LD A, %00010000                     ;Error Reset B
-    OUT (UART_B_STATUS_REG), A
-
-    LD A, %00101000                     ;Error Reset B
-    OUT (UART_B_STATUS_REG), A
-
-
-    LD A, %00000101                     ;Select reg 5
-    OUT (UART_B_STATUS_REG), A
-    LD A, %01101000                     ;Data Terminal Ready HIGH (0)
-    OUT (UART_B_STATUS_REG), A          ;8 Transmit Bits/Characters (11)
-                                        ;Send Break (0)
-                                        ;Transmit Enable (1)
-                                        ;CRC-16 (0)
-                                        ;Request To Send (0)
-                                        ;Transmit CRC Enable (0)
-.endmacro
-
-
 ;***************************************************************************
 ;CLEAR_LEDS
 ;Macro: Clears LEDs
@@ -537,6 +425,12 @@ READ_LINE:
     OUT (OUTPUT_BUFFER_REG), A
 .endmacro
 
+;***************************************************************************
+;Modules
+;***************************************************************************
+SBOOT:
+    .include "modules/sboot/sboot_entry.z80.asm"
+ 
 
 ;***************************************************************************
 ;                               Storage
@@ -553,9 +447,3 @@ ARG_BUFFER_3            .storage 32        ;Allow 32 chars
 ARG_BUFFER_4            .storage 32        ;Allow 32 chars
 
 COMMAND_BUFFER          .storage 32        ;Allow 32 chars
-
-.print COMMAND_INPUT_BUFFER
-.print ARG_BUFFER_1
-.print ARG_BUFFER_2
-.print ARG_BUFFER_3
-.print ARG_BUFFER_4
