@@ -30,12 +30,19 @@ To the underside of the PCB solder in the Raspberry Pi using the pins from a 2.5
 
 ## ROM Jumper Configuration ##
 
-This system supports the W27C257, 27256, and AT28C256 ROM chips. The W27C257, and 27256 are read-only and need to have jumpers set in the topmost position. The AT28C256 is read/write and needs two jumpers in the lower position.
+This system supports the W27C257, 27256 and AT28C256 ROM chips. The W27C257 and 27256 are read-only and need to have jumpers set in the topmost position. The AT28C256 is read/write and needs two jumpers in the lower position.
 
 ![Screenshot](images/rom_jumper_setting.jpg)
 
 ## Software Compiler ##
 My assembler of choice for this project has been the [Retro Assembler](https://enginedesigns.net/retroassembler/) by Peter Tihanyi. There is a VSCode [plugin](https://marketplace.visualstudio.com/items?itemName=EngineDesigns.retroassembler) available.
+
+## Serial Bootloader  ##
+The early version of the monitor includes a utility "sboot" that will fetch data over the UART and store it in the lower 32k and jump to the start of memory.
+
+For the serial bootloader to work you must be running the server utility that will provide the files for sboot to load. You can find it in ``software/server``.
+
+The sboot command can be configured to auto start on boot by setting `UART_AUTO_BOOT` to True in `monitor.z80.asm` and re-building.
 
 ## Memory Address Space ##
 

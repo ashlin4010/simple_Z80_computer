@@ -39,7 +39,7 @@ UART_A_DATA_REG     .EQU    $10
                                         ;Status Affects Vector (0)
                                         ;Transmit Interrupt Enable (0)
                                         ;External Interrupts Enable (0)
-    
+
     LD A, %00000011                     ;Select reg 3
     OUT (UART_B_STATUS_REG), A
     LD A, %11000001                     ;RX 8 BITS/CHARACTER 8 (11)
@@ -49,7 +49,7 @@ UART_A_DATA_REG     .EQU    $10
                                         ;ADDRESS SEARCH MODE (SDLC) (0)
                                         ;SYNC CHARACTER LOAD INHIBIT (0)
                                         ;Rx ENABLE (1)
-    
+
     LD A, %00000101                     ;Select reg 5
     OUT (UART_B_STATUS_REG), A
     LD A, %01101000                     ;Data Terminal Ready HIGH (0)
@@ -61,7 +61,6 @@ UART_A_DATA_REG     .EQU    $10
                                         ;Transmit CRC Enable (0)
 
 
-                                        
     LD A, %00101000                     ;RESET TxINT PENDING B
     OUT (UART_B_STATUS_REG), A
 
@@ -104,7 +103,7 @@ UART_A_DATA_REG     .EQU    $10
                                         ;Status Affects Vector (0)
                                         ;Transmit Interrupt Enable (0)
                                         ;External Interrupts Enable (0)
-    
+
     LD A, %00000011                     ;Select reg 3
     OUT (UART_A_STATUS_REG), A
     LD A, %11000001                     ;Rx 8 BITS/CHARACTER 8 (11)
@@ -114,7 +113,7 @@ UART_A_DATA_REG     .EQU    $10
                                         ;ADDRESS SEARCH MODE (SDLC) (0)
                                         ;SYNC CHARACTER LOAD INHIBIT (0)
                                         ;Rx ENABLE (1)
-    
+
     LD A, %00000101                     ;Select reg 5
     OUT (UART_A_STATUS_REG), A
     LD A, %01101000                     ;Data Terminal Ready HIGH (0)
@@ -126,6 +125,7 @@ UART_A_DATA_REG     .EQU    $10
                                         ;Transmit CRC Enable (0)
 
 
+;-------------------------------- Reset ----------------------------------------
     LD A, %00101000                     ;RESET TxINT PENDING A
     OUT (UART_A_STATUS_REG), A
 
@@ -145,22 +145,7 @@ UART_A_DATA_REG     .EQU    $10
     LD A, %10000000                     ;Reset Rx CRC checker A
     OUT (UART_A_STATUS_REG), A
 
-
-;-----------------Wait for A and B to initialise--------------------
-
-    @WAIT_INIT_A:
-        IN A, (UART_A_STATUS_REG)             ;Read serial status reg
-        AND %00001000
-        JR Z, @WAIT_INIT_A
-
-    @WAIT_INIT_B:
-        IN A, (UART_B_STATUS_REG)             ;Read serial status reg
-        AND %00001000
-        JR Z, @WAIT_INIT_B
-
-
 .endmacro
-
 
 ;***************************************************************************
 ;SEND_BYTE_UART
@@ -184,17 +169,22 @@ UART_A_DATA_REG     .EQU    $10
     PUSH BC      ; Push register BC onto the stack
 
     @poll
-        IN A, (UART_STATUS_REG)           ;Read serial status reg 
-        AND %00000100                   ;While bit 2 is not 1 check again
+        IN A, (UART_STATUS_REG)           ;Read serial status reg
+        AND %00000100                     ;While bit 2 is not 1 check again
         JR Z, @poll
-        LD A, B                            ;Write Data  
+        LD A, B                            ;Write Data
         OUT (UART_DATA_REG), A
+
+
+    @WAIT_SENT:
+        IN A, (UART_STATUS_REG)           ;Read serial status reg
+        AND %00000100                     ;While bit 2 is not 1 check again
+        JR Z, @WAIT_SENT
 
     POP BC       ; Pop the value from the stack into register BC
     POP AF       ; Pop the value from the stack into register AF
     RET
 .endmacro
-
 
 
 ;***************************************************************************
@@ -241,19 +231,19 @@ UART_A_DATA_REG     .EQU    $10
 
     PUSH HL
     PUSH AF
-
     LD HL, 0xFFFF                       ;Timeout counter
+
 @poll
-    DEC HL
+    DEC HL                              ;Check timeout
+    LD A, H
+    OR L
     JR Z, @timeout_uart
 
     IN A, (UART_STATUS_REG)             ;Check for byte
     AND %00000001
     JR Z, @poll
-
     POP AF
     POP HL
-
     IN A, (UART_DATA_REG)             ;Read Data
     JP result
 
@@ -286,7 +276,7 @@ UART_A_DATA_REG     .EQU    $10
     INC HL                              ;Get next char
     LD B, (HL)
     LD A, EOS                           ;If next char is not EOS jump start
-    OR B 
+    OR B
     JR NZ, @PRINT
     POP HL
     POP BC

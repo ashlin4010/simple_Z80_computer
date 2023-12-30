@@ -1,7 +1,7 @@
 ;**************************************************************
 ;
 ;                      Z80 Monitor Program
-;                           2023.11.13
+;                           2023.12.31
 ;                          (Incomplete)
 ;**************************************************************
 
@@ -12,13 +12,14 @@ JP INITIALISE                           ;Start
 
 .include "libs/uart.z80.asm"
 .include "libs/stack.z80.asm"
+.include "libs/delay.z80.asm"
 
-;*************************************************************************** 
+;***************************************************************************
 ;                           Constantes
 ;***************************************************************************
 BOOT_FLAG           .EQU    $FFFF
 STACK_POINTER       .EQU    $FFFD
-INTRO_TEXT          .asciiz "\r\nMonitor, 2023.11.13\r\n"
+INTRO_TEXT          .asciiz "\r\nMonitor - 2023.12.31\r\n"
 NEW_LINE            .asciiz "\r\n"
 MEMORY_START        .EQU    $8000       ;32k+
 
@@ -29,7 +30,7 @@ DEL_CHAR            .EQU    $7F
 
 OUTPUT_BUFFER_REG   .EQU    $20
 
-UART_AUTO_BOOT      .EQU    true
+UART_AUTO_BOOT      .EQU    false
 
 ;UART_B = Raspberry Pi, UART_A = USB UART
 UART_CONSOLE                .EQU    UART_B
@@ -53,57 +54,31 @@ INITIALISE:
 
 MAIN_LOOP:
     LD B, ">"
-    CALL SEND_CHAR_UART                 ;Print cursor
+    CALL SEND_CHAR_UART                     ;Print cursor
 
-    READ_INPUT(COMMAND_INPUT_BUFFER, 128)
-
+    READ_INPUT(COMMAND_INPUT_BUFFER, 128)   ;Read user input into COMMAND_INPUT_BUFFER
     LD HL, NEW_LINE
     CALL PRINT_STRING
 
-    LD HL, COMMAND_INPUT_BUFFER
+    LD HL, COMMAND_INPUT_BUFFER             ;Strip spaces out of COMMAND_INPUT_BUFFER and save into TEMP_BUFFER
     LD DE, TEMP_BUFFER
     CALL STRIP_STRINGS
 
-    LD HL, TEMP_BUFFER
-    CALL PRINT_STRING
-
-    LD B, "$"
-    CALL SEND_CHAR_UART
-
-    LD HL, NEW_LINE
-    CALL PRINT_STRING
-
-
-    LD HL, TEMP_BUFFER
+    LD HL, TEMP_BUFFER                      ;Copy TEMP_BUFFER back to COMMAND_INPUT_BUFFER
     LD DE, COMMAND_INPUT_BUFFER
     CALL COPY_STRING
 
-    LD HL, COMMAND_INPUT_BUFFER
-    CALL PRINT_STRING
+    LD HL, COMMAND_INPUT_BUFFER             ;Parse command and args into COMMAND_BUFFER and ARG_BUFFER_1-4
+    CALL PARSE_COMMAND_LINE
 
-    LD HL, NEW_LINE
-    CALL PRINT_STRING
+    CALL RUN_COMMAND                        ;Try to run any commands
 
     JP MAIN_LOOP
 
-;***************************************************************************
-;DEALY
-;Function: Wait some amount of time
-;***************************************************************************
-DEALY:
-    SAVE_REGISTERS()
-        LD DE, 0xFFFF
-    DELAY:
-        DEC DE
-        LD A, D
-        OR E
-        JR NZ, DELAY
-    RESTORE_REGISTERS()
-RET
 
 ;***************************************************************************
 ;WAIT_PI_BOOT
-;macro: At the end of memory set AA. If on resert we can read AA 
+;macro: At the end of memory set AA. If on resert we can read AA
 ;then power has not be interrupted and we don't neeed to wait for the PI to boot
 ;***************************************************************************
 .macro WAIT_PI_BOOT()
@@ -147,6 +122,106 @@ RET
 
 
 ;***************************************************************************
+;PARSE_COMMAND
+;***************************************************************************
+PARSE_COMMAND_LINE:
+    PUSH HL
+    LD HL, COMMAND_BUFFER
+    LD (HL), EOS
+    LD HL, ARG_BUFFER_1
+    LD (HL), EOS
+    LD HL, ARG_BUFFER_2
+    LD (HL), EOS
+    LD HL, ARG_BUFFER_3
+    LD (HL), EOS
+    LD HL, ARG_BUFFER_4
+    LD (HL), EOS
+    POP HL
+
+    LD DE, COMMAND_BUFFER
+    CALL COPY_SUBSTRING
+    LD A, (HL)
+    XOR EOS
+    JP Z, @END_OF_STRING
+    INC HL
+
+    LD DE, ARG_BUFFER_1
+    CALL COPY_SUBSTRING
+    LD A, (HL)
+    XOR EOS
+    JP Z, @END_OF_STRING
+    INC HL
+
+    LD DE, ARG_BUFFER_2
+    CALL COPY_SUBSTRING
+    LD A, (HL)
+    XOR EOS
+    JP Z, @END_OF_STRING
+    INC HL
+
+    LD DE, ARG_BUFFER_3
+    CALL COPY_SUBSTRING
+    LD A, (HL)
+    XOR EOS
+    JP Z, @END_OF_STRING
+    INC HL
+
+    LD DE, ARG_BUFFER_4
+    CALL COPY_SUBSTRING
+
+    @END_OF_STRING:
+        RET
+
+
+;***************************************************************************
+;COPY_SUBSTRING
+;Function: Walk and copy a string until a space or EOS
+;Args:
+;    HL - Input String Buffer - On exit HL points last byte in the string 
+;    DE - Output String Buffer
+;***************************************************************************
+COPY_SUBSTRING:
+    PUSH AF
+    PUSH BC
+    PUSH DE
+
+    EX DE, HL                           ;Set first byte as EOS
+    LD (HL), EOS
+    EX DE, HL
+@WALK
+    LD B, (HL)
+
+    LD A, B                             ;Read char from input
+    XOR EOS                             ;If EOS jump
+    JR Z, @END_OF_STRING
+
+    LD A, B                             ;Copy char into A
+    XOR " "                             ;If char is "space" then parse arg
+    JR Z, @END_OF_STRING                ;Handle end of command
+
+    PUSH HL                             ;Backup HL
+    LD H, D
+    LD L, E
+    LD (HL), B                          ;Copy the value from input to output
+    POP HL                              ;Restore HL
+
+    INC HL                              ;INC input
+    INC DE                              ;INC output
+    JP @WALK                            ;Continue
+
+@END_OF_STRING:
+    PUSH HL                             ;Back up input pointer
+    LD H, D
+    LD L, E
+    LD (HL), EOS                        ;Read EOS, write it and exit
+    POP HL                              ;Restore input pointer
+
+    POP DE
+    POP BC
+    POP AF
+    RET
+
+;***************************************************************************
 ;COMPARE_STRINGS
 ;Function: Given a string in HL and DE compare them
 ;Args:
@@ -156,7 +231,7 @@ RET
 COMPARE_STRINGS:
     ; in use HL, DE, A, B
     LD C, $00                           ;Start offset 0
-    
+
     @LOOP:
         PUSH HL                         ;Push string A pointer (Restore A)
         PUSH DE                         ;Push string B pointer (Restore B)
@@ -175,7 +250,7 @@ COMPARE_STRINGS:
         POP DE                          ;Pop string B pointer
         POP HL                          ;Pop string A pointer
 
-        XOR B                           ;XOR chars A and B 
+        XOR B                           ;XOR chars A and B
         RET NZ
 
         LD A, B                         ;Char A and B are the same
@@ -248,7 +323,7 @@ STRIP_STRINGS:
     LD (HL), B                          ;Write char to output
     INC DE                              ;INC DE (output)
     POP HL                              ;Restore HL
-    LD C, $00                           ;Set flag off, allow 
+    LD C, $00                           ;Set flag off, allow
     JP @WALK                            ;Continue
 @SPACE
     LD A, C                             ;If flag is set do not write anything
@@ -330,10 +405,10 @@ READ_LINE:
 
     LD A, H
     XOR DEL_CHAR                        ;If del jump
-    JR Z, @BACKSPACE 
+    JR Z, @BACKSPACE
 
     LD A, D                             ;Don't allow string to exceded bufferr
-    XOR $01                             ;Reserve last character for EOS 
+    XOR $01                             ;Reserve last character for EOS
     JR Z, @READ
 
     LD A, E                             ;Load limit into A
@@ -380,10 +455,10 @@ READ_LINE:
 
 ;***************************************************************************
 ;MATCH_AND_RUN_COMMAND
-;macro: If COMMAND_STRING matches STRING_BUFFER then jump to COMMAND_ENTRY
+;macro: If INPUT_COMMAND matches COMMAND_STRING then jump to COMMAND_ENTRY
 ;***************************************************************************
-.macro MATCH_AND_RUN_COMMAND(COMMAND_STRING, COMMAND_ENTRY)
-    LD HL, COMMAND_BUFFER                ;Console STRING_BUFFER
+.macro MATCH_AND_RUN_COMMAND(INPUT_COMMAND, COMMAND_STRING, COMMAND_ENTRY)
+    LD HL, INPUT_COMMAND               ;Console STRING_BUFFER
     LD DE, COMMAND_STRING               ;Command string
     CALL COMPARE_STRINGS                ;Compare strings
     JP Z, COMMAND_ENTRY                 ;If match jump to command
@@ -393,7 +468,7 @@ READ_LINE:
 
 ;***************************************************************************
 ;READ_INPUT
-;macro: Read input in to BUFFER of LENGTH 
+;macro: Read input in to BUFFER of LENGTH
 ;***************************************************************************
 .macro READ_INPUT(BUFFER, LENGTH)
     LD HL, BUFFER
@@ -404,7 +479,7 @@ READ_LINE:
 
 ;***************************************************************************
 ;INIT_BUFFER
-;macro: Initialise BUFFER of LENGTH 
+;macro: Initialise BUFFER of LENGTH
 ;***************************************************************************
 .macro INIT_BUFFER(BUFFER, LENGTH, VALUE)
     PUSH HL
@@ -426,11 +501,48 @@ READ_LINE:
 .endmacro
 
 ;***************************************************************************
+;DEALY
+;Function: Wait some amount of time
+;***************************************************************************
+DEALY:
+    DEALY($FFFF)
+
+
+;***************************************************************************
+;RUN_COMMAND
+;Function: Try match and run a command
+;***************************************************************************
+RUN_COMMAND:
+    MATCH_AND_RUN_COMMAND(COMMAND_BUFFER, HELP_COMMAND_STRING, HELP_TEXT)
+    MATCH_AND_RUN_COMMAND(COMMAND_BUFFER, SBOOT_COMMAND_STRING, SBOOT)
+    MATCH_AND_RUN_COMMAND(COMMAND_BUFFER, CLEAR_COMMAND_STRING, CLEAR)
+
+    LD HL, COMMAND_BUFFER
+    LD A, (HL)                          ;Get the first char
+    XOR EOS
+    RET Z                               ;If first char is 00 do nothing
+
+    LD HL, COMMAND_NOT_FOUND            ;Command not found
+    CALL PRINT_STRING
+    RET
+
+    COMMAND_NOT_FOUND       .asciiz "\r\nCommand not found!\r\n\r\n"
+
+;***************************************************************************
 ;Modules
 ;***************************************************************************
-SBOOT:
+HELP_TEXT:      ;Print help text
+    HELP_COMMAND_STRING     .asciiz "help"
+    .include "modules/help.z80.asm"
+
+SBOOT:          ;Boot from serial
+    SBOOT_COMMAND_STRING    .asciiz "sboot"
     .include "modules/sboot/sboot_entry.z80.asm"
- 
+
+CLEAR:          ;Clear the screen
+    CLEAR_COMMAND_STRING    .asciiz "clear"
+    .include "modules/clear.z80.asm"
+
 
 ;***************************************************************************
 ;                               Storage
